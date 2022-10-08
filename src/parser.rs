@@ -14,7 +14,7 @@ grammar:
 use std::fmt::Write;
 
 #[derive(Clone, Debug)]
-enum ParseRes<T> {
+pub enum ParseRes<T> {
     Parsed { val: T, next_pos: usize },
     NoParse,
 }
@@ -82,13 +82,13 @@ fn parse<R: Clone, T: Token>(
     cache_op: impl CacheOp<R>,
     parser: impl Fn(&mut Session<T>, usize) -> ParseRes<R>,
 ) -> ParseRes<R> {
-    println!("parse[{pos}]: cache lookup");
+    eprintln!("parse[{pos}]: cache lookup");
     let cache = &mut sess.cache;
     let lookup = cache_op.extract(&cache[pos]);
     match lookup {
         Some(res) => res,
         None => {
-            println!("parse[{pos}]: nothing in cache");
+            eprintln!("parse[{pos}]: nothing in cache");
             let res = parser(sess, pos);
             cache_op.update(&mut sess.cache[pos], res.clone());
             res
@@ -96,17 +96,17 @@ fn parse<R: Clone, T: Token>(
     }
 }
 
-fn parse_expr(source: &str) -> ParseRes<isize> {
+pub fn parse_expr(source: &str) -> ParseRes<isize> {
     let source: Vec<char> = source.chars().collect();
     let cache = vec![Derivation::default(); source.len()];
     let mut sess = Session {
         source: &source,
         cache,
     };
-    println!("parse_expr[0]: call parse_addition");
+    eprintln!("parse_expr[0]: call parse_addition");
     match parse(&mut sess, 0, field!(addition), parse_addition) {
         ParseRes::Parsed { next_pos, .. } if next_pos < source.len() => {
-            println!(
+            eprintln!(
                 "Not all input has been eaten: {} chars left",
                 source.len() - next_pos
             );
@@ -117,11 +117,11 @@ fn parse_expr(source: &str) -> ParseRes<isize> {
 }
 fn parse_addition(sess: &mut Session<char>, pos: usize) -> ParseRes<isize> {
     fn just_term(sess: &mut Session<char>, pos: usize) -> ParseRes<isize> {
-        println!("parse_addition[({pos})]: just term");
+        eprintln!("parse_addition[({pos})]: just term");
         parse(sess, pos, field!(term), parse_term)
     }
 
-    println!("parse_addition[({pos})]: enter");
+    eprintln!("parse_addition[({pos})]: enter");
     let old_pos = pos;
     match parse(sess, pos, field!(term), parse_term) {
         ParseRes::Parsed {
@@ -129,13 +129,13 @@ fn parse_addition(sess: &mut Session<char>, pos: usize) -> ParseRes<isize> {
             next_pos: mut pos,
         } => {
             if curr_tok(sess, pos) != '+' {
-                println!("parse_addition[({pos})]: expected a +");
+                eprintln!("parse_addition[({pos})]: expected a +");
                 return just_term(sess, old_pos);
             }
             (pos, _) = eat(sess, pos);
             match parse(sess, pos, field!(addition), parse_addition) {
                 ParseRes::NoParse => {
-                    println!("parse_addition[({pos})]: left side is not a term");
+                    eprintln!("parse_addition[({pos})]: left side is not a term");
                     just_term(sess, old_pos)
                 }
                 ParseRes::Parsed {
@@ -152,24 +152,77 @@ fn parse_addition(sess: &mut Session<char>, pos: usize) -> ParseRes<isize> {
 }
 
 fn parse_term(sess: &mut Session<char>, pos: usize) -> ParseRes<isize> {
-    println!("parse_term[{pos}]: parsing double paren");
+    eprintln!("parse_term[{pos}]: parsing double paren");
     if let res @ ParseRes::Parsed { .. } =
         parse(sess, pos, field!(double_parenthesis), parse_double_paren)
     {
-        println!("parse_term[{pos}]: got double paren");
+        eprintln!("parse_term[{pos}]: got double paren");
         return res;
     }
-    println!("parse_term[{pos}]: parse parenthesis");
+    eprintln!("parse_term[{pos}]: parse parenthesis");
     if let res @ ParseRes::Parsed { .. } = parse(sess, pos, field!(parenthesis), parse_paren) {
-        println!("parse_term[{pos}]: got parenthesis");
+        eprintln!("parse_term[{pos}]: got parenthesis");
         return res;
     }
-    println!("parse_term[{pos}]: parsing a number");
+    eprintln!("parse_term[{pos}]: parsing a number");
     parse(sess, pos, field!(number), parse_number)
 }
 
+fn parse_double_paren(sess: &mut Session<char>, mut pos: usize) -> ParseRes<isize> {
+    eprintln!("parse_double_paren[{pos}]: enter");
+    if curr_tok(sess, pos) != '(' {
+        eprintln!("parse_double_paren[{pos}]: not a lparen");
+        return ParseRes::NoParse;
+    }
+    (pos, _) = eat(sess, pos);
+    eprintln!("parse_double_paren[{pos}]: call parse paren");
+    match parse(sess, pos, field!(parenthesis), parse_paren) {
+        ParseRes::NoParse => ParseRes::NoParse,
+        ParseRes::Parsed {
+            val,
+            next_pos: mut pos,
+        } => {
+            if curr_tok(sess, pos) != ')' {
+                eprintln!("parse_double_paren[{pos}]: expected rparen");
+                ParseRes::NoParse
+            } else {
+                (pos, _) = eat(sess, pos);
+                ParseRes::Parsed {
+                    val: val * 2,
+                    next_pos: pos,
+                }
+            }
+        }
+    }
+}
+
+fn parse_paren(sess: &mut Session<char>, mut pos: usize) -> ParseRes<isize> {
+    eprintln!("parse_paren[{pos}]: enter");
+    if curr_tok(sess, pos) != '(' {
+        eprintln!("parse_paren[{pos}]: not a lparen");
+        return ParseRes::NoParse;
+    }
+    (pos, _) = eat(sess, pos);
+    eprintln!("parse_paren[{pos}]: call parse term");
+    match parse(sess, pos, field!(addition), parse_addition) {
+        ParseRes::NoParse => ParseRes::NoParse,
+        ParseRes::Parsed {
+            val,
+            next_pos: mut pos,
+        } => {
+            if curr_tok(sess, pos) != ')' {
+                eprintln!("parse_paren[{pos}]: expected rparen");
+                ParseRes::NoParse
+            } else {
+                (pos, _) = eat(sess, pos);
+                ParseRes::Parsed { val, next_pos: pos }
+            }
+        }
+    }
+}
+
 fn parse_number(sess: &mut Session<char>, mut pos: usize) -> ParseRes<isize> {
-    println!("parse_number[{pos}]: enter");
+    eprintln!("parse_number[{pos}]: enter");
     let tok = curr_tok(sess, pos);
     let (mut buf, is_zero) = match tok {
         '0' => {
@@ -185,14 +238,14 @@ fn parse_number(sess: &mut Session<char>, mut pos: usize) -> ParseRes<isize> {
     if is_zero && buf.len() > 1 {
         // here we could emit an error as this is a wrong literal
         // but that is a job for a lexer
-        println!("parse_number[{pos}]: the buffer starts with 0: {buf}");
+        eprintln!("parse_number[{pos}]: the buffer starts with 0: {buf}");
         return ParseRes::NoParse;
     }
     match curr_tok(sess, pos) {
         tok if tok.is_alphabetic() =>
         // Again, wrong literal here
         {
-            println!("parse_number[{pos}]: the following literal is {tok}. This is not legal.");
+            eprintln!("parse_number[{pos}]: the following literal is {tok}. This is not legal.");
             ParseRes::NoParse
         }
         _ if buf.is_empty() => ParseRes::NoParse,
@@ -200,59 +253,6 @@ fn parse_number(sess: &mut Session<char>, mut pos: usize) -> ParseRes<isize> {
             val: buf.parse().unwrap(),
             next_pos: pos,
         },
-    }
-}
-
-fn parse_paren(sess: &mut Session<char>, mut pos: usize) -> ParseRes<isize> {
-    println!("parse_paren[{pos}]: enter");
-    if curr_tok(sess, pos) != '(' {
-        println!("parse_paren[{pos}]: not a lparen");
-        return ParseRes::NoParse;
-    }
-    (pos, _) = eat(sess, pos);
-    println!("parse_paren[{pos}]: call parse term");
-    match parse(sess, pos, field!(addition), parse_addition) {
-        ParseRes::NoParse => ParseRes::NoParse,
-        ParseRes::Parsed {
-            val,
-            next_pos: mut pos,
-        } => {
-            if curr_tok(sess, pos) != ')' {
-                println!("parse_paren[{pos}]: expected rparen");
-                ParseRes::NoParse
-            } else {
-                (pos, _) = eat(sess, pos);
-                ParseRes::Parsed { val, next_pos: pos }
-            }
-        }
-    }
-}
-
-fn parse_double_paren(sess: &mut Session<char>, mut pos: usize) -> ParseRes<isize> {
-    println!("parse_double_paren[{pos}]: enter");
-    if curr_tok(sess, pos) != '(' {
-        println!("parse_double_paren[{pos}]: not a lparen");
-        return ParseRes::NoParse;
-    }
-    (pos, _) = eat(sess, pos);
-    println!("parse_double_paren[{pos}]: call parse paren");
-    match parse(sess, pos, field!(parenthesis), parse_paren) {
-        ParseRes::NoParse => ParseRes::NoParse,
-        ParseRes::Parsed {
-            val,
-            next_pos: mut pos,
-        } => {
-            if curr_tok(sess, pos) != ')' {
-                println!("parse_double_paren[{pos}]: expected rparen");
-                ParseRes::NoParse
-            } else {
-                (pos, _) = eat(sess, pos);
-                ParseRes::Parsed {
-                    val: val * 2,
-                    next_pos: pos,
-                }
-            }
-        }
     }
 }
 
