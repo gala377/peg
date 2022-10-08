@@ -105,13 +105,15 @@ fn parse_expr(source: &str) -> ParseRes<isize> {
     };
     println!("parse_expr[0]: call parse_addition");
     match parse(&mut sess, 0, field!(addition), parse_addition) {
-        ParseRes::Parsed { next_pos , ..} if next_pos < source.len() => {
-            println!("Not all input has been eaten: {} chars left", source.len() - next_pos);
+        ParseRes::Parsed { next_pos, .. } if next_pos < source.len() => {
+            println!(
+                "Not all input has been eaten: {} chars left",
+                source.len() - next_pos
+            );
             ParseRes::NoParse
         }
-        res@_ => res
+        res @ _ => res,
     }
-
 }
 fn parse_addition(sess: &mut Session<char>, pos: usize) -> ParseRes<isize> {
     fn just_term(sess: &mut Session<char>, pos: usize) -> ParseRes<isize> {
@@ -257,7 +259,7 @@ fn parse_double_paren(sess: &mut Session<char>, mut pos: usize) -> ParseRes<isiz
 fn curr_tok<T: Token>(sess: &Session<T>, pos: usize) -> T {
     match sess.source.get(pos) {
         None => T::EOF,
-        Some(T) => T.clone(),
+        Some(tok) => tok.clone(),
     }
 }
 
@@ -387,7 +389,10 @@ mod tests {
     fn parse_expr_parses_double_parenthesis_meaning_that_do_not_double() {
         assert_matches!(
             parse_expr("((1+1)+1)"),
-            ParseRes::Parsed { val: 3, next_pos: 9 }
+            ParseRes::Parsed {
+                val: 3,
+                next_pos: 9
+            }
         );
     }
 
@@ -395,7 +400,10 @@ mod tests {
     fn parse_expr_does_not_match_double_paren_greedily() {
         assert_matches!(
             parse_expr("(((1+1))+1)"),
-            ParseRes::Parsed { val: 5, next_pos: 11 }
+            ParseRes::Parsed {
+                val: 5,
+                next_pos: 11
+            }
         );
     }
 }
