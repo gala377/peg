@@ -22,7 +22,6 @@ pub enum ParseRes<T> {
 #[derive(Default, Clone)]
 struct Derivation {
     addition: Option<ParseRes<isize>>,
-    multiplication: Option<ParseRes<isize>>,
     term: Option<ParseRes<isize>>,
     double_parenthesis: Option<ParseRes<isize>>,
     parenthesis: Option<ParseRes<isize>>,
