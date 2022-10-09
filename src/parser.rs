@@ -350,11 +350,7 @@ grammar DerivationTest {
             ParseRes::Parsed {
                 val: left,
                 next_pos: mut pos,
-            } => {
-                if curr_tok(sess, pos) != '+' {
-                    eprintln!("parse_addition[({pos})]: expected a +");
-                    return just_term(sess, old_pos);
-                }
+            } if curr_tok(sess, pos) == '+' => {
                 (pos, _) = eat(sess, pos);
                 match parse!(sess, pos, addition) {
                     ParseRes::NoParse => {
@@ -369,6 +365,10 @@ grammar DerivationTest {
                         next_pos,
                     },
                 }
+            }
+            ParseRes::Parsed { .. } => {
+                eprintln!("parse_addition[({pos})]: expected a +");
+                just_term(sess, old_pos)
             }
             ParseRes::NoParse => just_term(sess, old_pos),
         }
@@ -404,17 +404,16 @@ grammar DerivationTest {
             ParseRes::Parsed {
                 val,
                 next_pos: mut pos,
-            } => {
-                if curr_tok(sess, pos) != ')' {
-                    eprintln!("parse_double_paren[{pos}]: expected rparen");
-                    ParseRes::NoParse
-                } else {
-                    (pos, _) = eat(sess, pos);
-                    ParseRes::Parsed {
-                        val: val * 2,
-                        next_pos: pos,
-                    }
+            } if curr_tok(sess, pos) == ')' => {
+                (pos, _) = eat(sess, pos);
+                ParseRes::Parsed {
+                    val: val * 2,
+                    next_pos: pos,
                 }
+            }
+            ParseRes::Parsed { .. } => {
+                eprintln!("parse_double_paren[{pos}]: expected rparen");
+                ParseRes::NoParse
             }
         }
     }
@@ -426,20 +425,19 @@ grammar DerivationTest {
             return ParseRes::NoParse;
         }
         (pos, _) = eat(sess, pos);
-        eprintln!("parse_paren[{pos}]: call parse term");
+        eprintln!("parse_paren[{pos}]: call parse addition");
         match parse!(sess, pos, addition) {
             ParseRes::NoParse => ParseRes::NoParse,
             ParseRes::Parsed {
                 val,
                 next_pos: mut pos,
-            } => {
-                if curr_tok(sess, pos) != ')' {
-                    eprintln!("parse_paren[{pos}]: expected rparen");
-                    ParseRes::NoParse
-                } else {
-                    (pos, _) = eat(sess, pos);
-                    ParseRes::Parsed { val, next_pos: pos }
-                }
+            } if curr_tok(sess, pos) == ')' => {
+                (pos, _) = eat(sess, pos);
+                ParseRes::Parsed { val, next_pos: pos }
+            }
+            ParseRes::Parsed { .. } => {
+                eprintln!("parse_paren[{pos}]: expected rparen");
+                ParseRes::NoParse
             }
         }
     }
