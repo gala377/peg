@@ -283,8 +283,18 @@ macro_rules! field_op {
     };
 }
 
+macro_rules! parse {
+    ($sess:expr, $pos:expr, $fname:ident) => {
+        parse($sess, $pos, field_op!(Self.$fname), Self::$fname)
+    };
+
+    ($sess:expr, $pos:expr, $tname:ident::$fname:ident) => {
+        parse($sess, $pos, field_op!($tname.$fname), $tname::$fname)
+    };
+}
+
 macro_rules! peg {
-    (grammar $name:ident { $($rule:ident : $t:ty => $body:expr),+ $(,)? }) => {
+    (grammar $name:ident { $($rule:ident($sess:pat, $pos:pat) -> $t:ty $body:block)+ }) => {
 
         impl<T, ExtractFn, UpdateFn> CacheOp<$name, T> for (ExtractFn, UpdateFn)
         where
@@ -302,7 +312,7 @@ macro_rules! peg {
 
 
         #[derive(Default, Clone, Debug)]
-        struct $name {
+        pub struct $name {
             $(
                 $rule: Option<ParseRes<$t>>
             ),+
@@ -310,30 +320,25 @@ macro_rules! peg {
         impl $name {
             $(
                 fn $rule(sess: &mut Session<char, $name>, pos: usize) -> ParseRes<$t> {
+                    let f = |$sess: &mut Session<char, $name>, $pos: usize| -> ParseRes<$t> { $body };
                     parse(
                         sess,
                         pos,
                         field_op!($name.$rule),
-                        $body)
+                        f)
                 }
             )+
         }
     };
 }
 
-macro_rules! parse {
-    ($sess:expr, $pos:expr, $fname:ident) => {
-        parse($sess, $pos, field_op!(Self.$fname), Self::$fname)
-    };
-
-    ($sess:expr, $pos:expr, $tname:ident::$fname:ident) => {
-        parse($sess, $pos, field_op!($tname.$fname), $tname::$fname)
-    };
-}
-
 peg! {
 grammar DerivationTest {
-    addition: isize => |sess, pos| {
+    start(sess, pos) -> isize {
+        parse!(sess, pos, addition)
+    }
+
+    addition(sess, pos) -> isize {
         fn just_term(sess: &mut Session<char, DerivationTest>, pos: usize) -> ParseRes<isize> {
             eprintln!("parse_addition[({pos})]: just term");
             parse!(sess, pos, DerivationTest::term)
@@ -367,8 +372,9 @@ grammar DerivationTest {
             }
             ParseRes::NoParse => just_term(sess, old_pos),
         }
-    },
-    term: isize => |sess, pos| {
+    }
+
+    term(sess, pos) -> isize {
         eprintln!("parse_term[{pos}]: parsing double paren");
         if let res @ ParseRes::Parsed { .. } =
             parse!(sess, pos, double_paren)
@@ -383,9 +389,9 @@ grammar DerivationTest {
         }
         eprintln!("parse_term[{pos}]: parsing a number");
         parse!(sess, pos, number)
-    },
+    }
 
-    double_paren: isize => |sess, mut pos| {
+    double_paren(sess, mut pos) -> isize {
         eprintln!("parse_double_paren[{pos}]: enter");
         if curr_tok(sess, pos) != '(' {
             eprintln!("parse_double_paren[{pos}]: not a lparen");
@@ -411,8 +417,9 @@ grammar DerivationTest {
                 }
             }
         }
-    },
-    paren: isize => |sess, mut pos| {
+    }
+
+    paren(sess, mut pos) -> isize {
         eprintln!("parse_paren[{pos}]: enter");
         if curr_tok(sess, pos) != '(' {
             eprintln!("parse_paren[{pos}]: not a lparen");
@@ -435,8 +442,9 @@ grammar DerivationTest {
                 }
             }
         }
-    },
-    number: isize => |sess, mut pos| {
+    }
+
+    number(sess, mut pos) -> isize {
         eprintln!("parse_number[{pos}]: enter");
         let tok = curr_tok(sess, pos);
         let (mut buf, is_zero) = match tok {
@@ -471,11 +479,10 @@ grammar DerivationTest {
         }
     }
 }
-
 }
 
 impl DerivationTest {
-    fn parse(source: &str) -> ParseRes<isize> {
+    pub fn parse(source: &str) -> ParseRes<isize> {
         let source: Vec<char> = source.chars().collect();
         let cache = vec![DerivationTest::default(); source.len()];
         let mut sess = Session {
@@ -483,7 +490,7 @@ impl DerivationTest {
             cache,
         };
         eprintln!("parse_expr[0]: call parse_addition");
-        DerivationTest::addition(&mut sess, 0)
+        DerivationTest::start(&mut sess, 0)
     }
 }
 
