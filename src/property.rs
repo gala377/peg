@@ -1,5 +1,3 @@
-
-
 pub trait Property<Typ, Get, Set> {
     fn get(&self, d: &Typ) -> Get;
     fn set(&self, d: &mut Typ, v: Set);

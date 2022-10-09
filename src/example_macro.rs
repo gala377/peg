@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use crate::parser::{curr_tok, eat, parse, Session, ParseRes};
+use crate::parser::{curr_tok, eat, parse, ParseRes, Session};
 
 /*
 grammar:

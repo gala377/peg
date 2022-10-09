@@ -3,9 +3,9 @@ mod peg_macro;
 mod session;
 mod token;
 
-use token::Token;
-pub use session::Session;
 use crate::property::Property;
+pub use session::Session;
+use token::Token;
 
 #[derive(Clone, Debug)]
 pub enum ParseRes<T> {
@@ -13,13 +13,12 @@ pub enum ParseRes<T> {
     NoParse,
 }
 
-
-pub fn parse<R: Clone, T: Token, D>(
-    sess: &mut Session<T, D>,
+pub fn parse<Res: Clone, Tok: Token, Derivation>(
+    sess: &mut Session<Tok, Derivation>,
     pos: usize,
-    cache_op: impl Property<D, Option<ParseRes<R>>, ParseRes<R>>,
-    parser: impl Fn(&mut Session<T, D>, usize) -> ParseRes<R>,
-) -> ParseRes<R> {
+    cache_op: impl Property<Derivation, Option<ParseRes<Res>>, ParseRes<Res>>,
+    parser: impl Fn(&mut Session<Tok, Derivation>, usize) -> ParseRes<Res>,
+) -> ParseRes<Res> {
     eprintln!("parse[{pos}]: cache lookup");
     let cache = &mut sess.cache;
     let lookup = cache_op.get(&cache[pos]);
@@ -34,13 +33,13 @@ pub fn parse<R: Clone, T: Token, D>(
     }
 }
 
-pub fn curr_tok<T: Token, D>(sess: &Session<T, D>, pos: usize) -> T {
+pub fn curr_tok<Tok: Token, Derivation>(sess: &Session<Tok, Derivation>, pos: usize) -> Tok {
     match sess.source.get(pos) {
-        None => T::EOF,
+        None => Tok::EOF,
         Some(tok) => tok.clone(),
     }
 }
 
-pub fn eat<T: Token, D>(sess: &Session<T, D>, pos: usize) -> (usize, T) {
+pub fn eat<Tok: Token, Derivation>(sess: &Session<Tok, Derivation>, pos: usize) -> (usize, Tok) {
     (pos + 1, curr_tok(sess, pos))
 }

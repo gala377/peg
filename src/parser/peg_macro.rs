@@ -14,7 +14,12 @@ macro_rules! parse {
     };
 
     ($sess:expr, $pos:expr, $tname:ident::$fname:ident) => {
-        parse($sess, $pos, $crate::field_op!($tname.$fname), $tname::$fname)
+        parse(
+            $sess,
+            $pos,
+            $crate::field_op!($tname.$fname),
+            $tname::$fname,
+        )
     };
 }
 

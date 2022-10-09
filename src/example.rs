@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use crate::parser::{curr_tok, eat, parse, Session, ParseRes};
+use crate::parser::{curr_tok, eat, parse, ParseRes, Session};
 
 /*
 grammar:
@@ -215,8 +215,8 @@ mod tests {
         };
     }
 
-    use crate::property::Property;
     use super::*;
+    use crate::property::Property;
 
     #[test]
     fn test_cache_op_making_macro() {

@@ -1,5 +1,3 @@
-
-
 pub trait Token: Clone {
     const EOF: Self;
 }
