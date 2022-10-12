@@ -154,6 +154,10 @@ impl DerivationTest {
         eprintln!("parse_expr[0]: call parse_addition");
         DerivationTest::start(&mut sess, 0)
     }
+
+    pub fn parse_with_session(sess: &mut Session<char, Self>) -> ParseRes<isize> {
+        DerivationTest::start(sess, 0)
+    }
 }
 
 #[cfg(test)]
