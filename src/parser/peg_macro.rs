@@ -66,7 +66,7 @@ macro_rules! or_parse {
 
 #[macro_export]
 macro_rules! peg {
-    (grammar $name:ident { $($rule:ident($sess:pat, $pos:pat) -> $t:ty $body:block)+ }) => {
+    (grammar $name:ident { $($rvis:vis $rule:ident($sess:pat, $pos:pat) -> $t:ty $body:block)+ }) => {
 
         #[derive(Default, Clone, Debug)]
         pub struct $name {
@@ -76,7 +76,7 @@ macro_rules! peg {
         }
         impl $name {
             $(
-                fn $rule(sess: &mut $crate::parser::Session<char, $name>, pos: usize) -> $crate::parser::ParseRes<$t> {
+                $rvis fn $rule(sess: &mut $crate::parser::Session<char, $name>, pos: usize) -> $crate::parser::ParseRes<$t> {
                     let f = |$sess: &mut $crate::parser::Session<char, $name>, $pos: usize| -> $crate::parser::ParseRes<$t> { $body };
                     parse(
                         sess,
