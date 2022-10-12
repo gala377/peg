@@ -144,6 +144,7 @@ grammar DerivationTest {
 }
 
 impl DerivationTest {
+    #[cfg(test)]
     pub fn parse(source: &str) -> ParseRes<isize> {
         let source: Vec<char> = source.chars().collect();
         let cache = vec![DerivationTest::default(); source.len()];
