@@ -179,7 +179,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn deriv_parse_expr_parses_zero() {
+    fn parse_expr_parses_zero() {
         assert_matches!(
             DerivationTest::parse("0"),
             ParseRes::Parsed {
@@ -190,7 +190,7 @@ mod tests {
     }
 
     #[test]
-    fn deriv_parse_expr_parses_longer_number() {
+    fn parse_expr_parses_longer_number() {
         assert_matches!(
             DerivationTest::parse("123456"),
             ParseRes::Parsed {
@@ -201,7 +201,7 @@ mod tests {
     }
 
     #[test]
-    fn deriv_parse_expr_parses_number_in_parenthesis() {
+    fn parse_expr_parses_number_in_parenthesis() {
         assert_matches!(
             DerivationTest::parse("(123)"),
             ParseRes::Parsed {
@@ -212,7 +212,7 @@ mod tests {
     }
 
     #[test]
-    fn deriv_parse_expr_doubles_value_in_double_paren() {
+    fn parse_expr_doubles_value_in_double_paren() {
         assert_matches!(
             DerivationTest::parse("((20))"),
             ParseRes::Parsed {
@@ -222,7 +222,7 @@ mod tests {
         );
     }
     #[test]
-    fn deriv_parse_expr_doubles_value_in_double_paren_inside_paren() {
+    fn parse_expr_doubles_value_in_double_paren_inside_paren() {
         assert_matches!(
             DerivationTest::parse("(((20)))"),
             ParseRes::Parsed {
@@ -232,7 +232,7 @@ mod tests {
         );
     }
     #[test]
-    fn deriv_parse_expr_quadruples_value_in_double_double_paren() {
+    fn parse_expr_quadruples_value_in_double_double_paren() {
         assert_matches!(
             DerivationTest::parse("((((20))))"),
             ParseRes::Parsed {
@@ -243,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    fn deriv_parse_expr_parses_addition() {
+    fn parse_expr_parses_addition() {
         assert_matches!(
             DerivationTest::parse("1+2"),
             ParseRes::Parsed {
@@ -254,7 +254,7 @@ mod tests {
     }
 
     #[test]
-    fn deriv_parse_expr_parses_double_parenthesis_meaning_that_do_not_double() {
+    fn parse_expr_parses_double_parenthesis_meaning_that_do_not_double() {
         assert_matches!(
             DerivationTest::parse("((1+1)+1)"),
             ParseRes::Parsed {
@@ -265,7 +265,7 @@ mod tests {
     }
 
     #[test]
-    fn deriv_parse_expr_does_not_match_double_paren_greedily() {
+    fn parse_expr_does_not_match_double_paren_greedily() {
         assert_matches!(
             DerivationTest::parse("(((1+1))+1)"),
             ParseRes::Parsed {
