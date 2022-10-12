@@ -14,8 +14,8 @@ grammar:
 ((A)) is a special double paren that doubles the value inside
 */
 
-#[derive(Default, Clone)]
-struct Derivation {
+#[derive(Default, Clone, Debug)]
+pub struct Derivation {
     addition: Option<ParseRes<isize>>,
     term: Option<ParseRes<isize>>,
     double_parenthesis: Option<ParseRes<isize>>,
@@ -34,6 +34,20 @@ macro_rules! field {
     };
 }
 
+pub fn parse_with_session(sess: &mut Session<char, Derivation>) -> ParseRes<isize> {
+    eprintln!("parse_expr[0]: call parse_addition");
+    match parse(sess, 0, field!(addition), parse_addition) {
+        ParseRes::Parsed { next_pos, .. } if next_pos < sess.source.len() => {
+            eprintln!(
+                "Not all input has been eaten: {} chars left",
+                sess.source.len() - next_pos
+            );
+            ParseRes::NoParse
+        }
+        res @ _ => res,
+    }
+}
+#[cfg(test)]
 pub fn parse_expr(source: &str) -> ParseRes<isize> {
     let source: Vec<char> = source.chars().collect();
     let cache = vec![Derivation::default(); source.len()];
@@ -53,6 +67,7 @@ pub fn parse_expr(source: &str) -> ParseRes<isize> {
         res @ _ => res,
     }
 }
+
 
 fn parse_addition(sess: &mut ParseSess, pos: usize) -> ParseRes<isize> {
     fn just_term(sess: &mut ParseSess, pos: usize) -> ParseRes<isize> {

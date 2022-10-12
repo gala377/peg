@@ -9,6 +9,8 @@ use std::process::ExitCode;
 
 use clap::{command, Parser, ValueEnum};
 
+use crate::parser::{ParseRes, Session};
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -29,29 +31,17 @@ enum ParserMode {
 
 fn main() -> ExitCode {
     let args = Args::parse();
-    let parse_fn: Box<dyn Fn(&str) -> parser::ParseRes<isize>> = match args.parser {
-        ParserMode::Macro => Box::new(|source: &str| {
-            let source: Vec<char> = source.chars().collect();
-            let cache = vec![example_macro::DerivationTest::default(); source.len()];
-            let mut sess = parser::Session {
-                source: &source,
-                cache,
-            };
-            let res = example_macro::DerivationTest::parse_with_session(&mut sess);
-            if args.show_cache {
-                println!("Session's cache after is {:#?}", sess.cache);
-            }
-            res
-        }),
-        ParserMode::Functional => Box::new(|source: &str| {
-            let res = example::parse_expr(source);
-            if args.show_cache {
-                println!("SHOW CACHE NOT SUPORRTED FOR FUNCTIONAL PARSER");
-            }
-            res
-        }),
+    let parse_fn: Box<dyn Fn(&Vec<char>) -> ParseRes<isize>> = match args.parser {
+        ParserMode::Macro => Box::new(make_parser(
+            example_macro::DerivationTest::parse_with_session,
+            args.show_cache,
+        )),
+        ParserMode::Functional => {
+            Box::new(make_parser(example::parse_with_session, args.show_cache))
+        }
     };
-    match parse_fn(&args.source) {
+    let source: Vec<char> = args.source.chars().collect();
+    match parse_fn(&source) {
         parser::ParseRes::Parsed { val, .. } => {
             println!("{val}");
             ExitCode::SUCCESS
@@ -60,5 +50,27 @@ fn main() -> ExitCode {
             eprintln!("Could not parse successfully");
             ExitCode::FAILURE
         }
+    }
+}
+
+fn make_session<D: Default + Clone>(source: &Vec<char>) -> Session<char, D> {
+    let cache = vec![D::default(); source.len()];
+    parser::Session {
+        source: &source,
+        cache,
+    }
+}
+
+fn make_parser<D: Default + Clone + std::fmt::Debug, T>(
+    parser: impl Fn(&mut parser::Session<char, D>) -> ParseRes<T>,
+    show_cache: bool,
+) -> impl Fn(&Vec<char>) -> ParseRes<T> {
+    move |source: &Vec<char>| {
+        let mut sess = make_session(&source);
+        let res = parser(&mut sess);
+        if show_cache {
+            println!("Session's cache after is {:#?}", sess.cache);
+        }
+        res
     }
 }
