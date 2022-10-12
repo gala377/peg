@@ -17,27 +17,22 @@ grammar:
 peg! {
 grammar DerivationTest {
     start(sess, pos) -> isize {
-        parse!(sess, pos, addition)
+        Self::addition(sess, pos)
     }
 
     addition(sess, pos) -> isize {
-        fn just_term(sess: &mut Session<char, DerivationTest>, pos: usize) -> ParseRes<isize> {
-            eprintln!("parse_addition[({pos})]: just term");
-            parse!(sess, pos, DerivationTest::term)
-        }
-
         eprintln!("parse_addition[({pos})]: enter");
         let old_pos = pos;
-        match parse!(sess, pos, term) {
+        match Self::term(sess, pos) {
             ParseRes::Parsed {
                 val: left,
                 next_pos: mut pos,
             } if curr_tok(sess, pos) == '+' => {
                 (pos, _) = eat(sess, pos);
-                match parse!(sess, pos, addition) {
+                match Self::addition(sess, pos) {
                     ParseRes::NoParse => {
                         eprintln!("parse_addition[({pos})]: left side is not a term");
-                        just_term(sess, old_pos)
+                        Self::term(sess, old_pos)
                     }
                     ParseRes::Parsed {
                         val: right,
@@ -50,9 +45,9 @@ grammar DerivationTest {
             }
             ParseRes::Parsed { .. } => {
                 eprintln!("parse_addition[({pos})]: expected a +");
-                just_term(sess, old_pos)
+                Self::term(sess, old_pos)
             }
-            ParseRes::NoParse => just_term(sess, old_pos),
+            ParseRes::NoParse => Self::term(sess, old_pos),
         }
     }
 
@@ -68,7 +63,7 @@ grammar DerivationTest {
         }
         (pos, _) = eat(sess, pos);
         eprintln!("parse_double_paren[{pos}]: call parse paren");
-        match parse!(sess, pos, paren) {
+        match Self::paren(sess, pos) {
             ParseRes::NoParse => ParseRes::NoParse,
             ParseRes::Parsed {
                 val,
@@ -95,7 +90,7 @@ grammar DerivationTest {
         }
         (pos, _) = eat(sess, pos);
         eprintln!("parse_paren[{pos}]: call parse addition");
-        match parse!(sess, pos, addition) {
+        match Self::addition(sess, pos) {
             ParseRes::NoParse => ParseRes::NoParse,
             ParseRes::Parsed {
                 val,
